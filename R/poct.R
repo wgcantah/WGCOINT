@@ -1,74 +1,93 @@
-#' Multivariate Phillips–Ouliaris Cointegration Test
+#' Multivariate Phillips–Ouliaris Cointegration Test (extended)
 #'
-#' This is a drop‑in replacement for `poct()` that lets you test
-#' cointegration among *any* number of series in your data frame.
+#' Performs the multivariate Phillips–Ouliaris test on any number of series,
+#' and returns a table of test statistic, critical values (10%, 5%, 1%),
+#' plus a crude p‑value bound.
 #'
-#' @param data      A data.frame containing your time series.
-#' @param vars      A character vector of column names to include (length ≥ 2).
-#' @param demean    One of "none", "constant", or "trend" (default "constant").
-#' @param lags      "short", "long", or an integer (default "short").
-#' @param alpha     Significance level for selecting the critical value (0.01, 0.05, or 0.1; default 0.05).
-#' @param type      Test statistic type: "Pz" or "Pu" (default "Pz").
+#' @param data   A data.frame containing your time series.
+#' @param vars   Character vector of at least two column names in `data`.
+#' @param demean One of "none", "constant", or "trend" (default "constant").
+#' @param lags   "short", "long", or a positive integer (default "short").
+#' @param type   Test statistic type: "Pz" (default) or "Pu".
 #'
-#' @return A list with
-#' * `test_result` – the `ca.po()` object
-#' * `test_stat` – the single Phillips–Ouliaris statistic
-#' * `critical_values` – the full named vector of critical values
-#' * `selected_critical_value` – the value matching your `alpha`
+#' @return A list with components:
+#'   * `results` – a data.frame with columns  
+#'       - `test_stat` – the PO statistic  
+#'       - `crit_10`,`crit_5`,`crit_1` – critical values at 10%, 5%, 1%  
+#'       - `p_value` – crude p‑value bound  
+#'   * `test_object` – the original `ca.po` object, invisibly  
 #'
-#' @details
-#' Combines your selected columns (≥2) into a multivariate `ts` matrix and
-#' runs `urca::ca.po()`.  If **urca** is not installed, you’ll be prompted
-#' to `install.packages("urca")`.
+#' @examples
+#' \dontrun{
+#'   # simulate 3 I(1) series
+#'   set.seed(2025)
+#'   df <- data.frame(
+#'     z1 = cumsum(rnorm(200)),
+#'     z2 = cumsum(rnorm(200)),
+#'     z3 = cumsum(rnorm(200))
+#'   )
+#'   out <- poct(df, vars = c("z1","z2","z3"), lags = 4)
+#'   print(out$results)
+#' }
 #' @export
-poct <- function(data, vars,
-                 demean = "constant",
-                 lags   = "short",
-                 alpha  = 0.05,
-                 type   = "Pz") {
-  if (!requireNamespace("urca", quietly = TRUE)) {
-    stop("Package 'urca' is required but not installed. Please install it via install.packages('urca').")
-  }
-  if (length(vars) < 2) stop("Please supply at least two column names in `vars`.")
+poct<- function(data, vars,
+                     demean = "constant",
+                     lags   = "short",
+                     type   = "Pz") {
 
-  # extract and ensure ts objects
+  # 1) Package check
+  if (!requireNamespace("urca", quietly = TRUE)) {
+    stop("Package 'urca' is required. install.packages('urca')")
+  }
+
+  # 2) Input validation
+  if (length(vars) < 2) {
+    stop("Please supply at least two column names in `vars`.")
+  }
+  if (!all(vars %in% names(data))) {
+    stop("Some `vars` not found in `data`.")
+  }
+
+  # 3) Build a multivariate ts matrix
   series_list <- lapply(vars, function(v) {
     x <- data[[v]]
     if (!is.ts(x)) x <- ts(x)
     x
   })
+  ts_mat <- do.call(cbind, series_list)
+  colnames(ts_mat) <- vars
 
-  # build multivariate ts matrix
-  ts_matrix <- do.call(cbind, series_list)
-  colnames(ts_matrix) <- vars
+  # 4) Run PO test
+  po <- urca::ca.po(ts_mat,
+                    demean = demean,
+                    lag    = lags,
+                    type   = type)
 
-  # run the test
-  test_result <- urca::ca.po(ts_matrix,
-                             demean = demean,
-                             lag    = lags,
-                             type   = type)
+  # 5) Extract statistic & crit vals
+  stat <- as.numeric(po@teststat)
+  cvs  <- po@cval[1, c("10pct","5pct","1pct")]
+  names(cvs) <- c("crit_10","crit_5","crit_1")
 
-  # unpack statistics
-  test_stat <- test_result@teststat
-  cval_vec  <- test_result@cval
-  alpha_name <- switch(as.character(alpha),
-                       "0.01" = "1pct",
-                       "0.05" = "5pct",
-                       "0.1"  = "10pct",
-                       { warning("Unrecognized alpha; defaulting to 5pct."); "5pct" })
-  crit_value <- cval_vec[alpha_name]
+  # 6) Compute p‑value bound
+  pval <- if      (stat > cvs["crit_1"])  "<0.01"
+          else if (stat > cvs["crit_5"])  "<0.05"
+          else if (stat > cvs["crit_10"]) "<0.10"
+          else                             ">0.10"
 
-  # report
-  cat("Phillips–Ouliaris Test on variables:", paste(vars, collapse = ", "), "\n")
-  print(summary(test_result))
-  cat("\nTest Statistic:", test_stat, "\n")
-  cat("Critical Values:\n"); print(cval_vec)
-  cat("Selected Critical Value (alpha =", alpha, "):", crit_value, "\n\n")
+  # 7) Assemble results table
+  res_tbl <- data.frame(
+    test_stat = stat,
+    crit_10   = cvs["crit_10"],
+    crit_5    = cvs["crit_5"],
+    crit_1    = cvs["crit_1"],
+    p_value   = pval,
+    row.names = NULL,
+    stringsAsFactors = FALSE
+  )
 
+  # 8) Return both table and full object
   invisible(list(
-    test_result             = test_result,
-    test_stat               = test_stat,
-    critical_values         = cval_vec,
-    selected_critical_value = crit_value
+    results     = res_tbl,
+    test_object = po
   ))
 }
