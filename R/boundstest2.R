@@ -14,7 +14,7 @@
 #’ @return Invisibly, the full list that dLagM::ardlBound would return;
 #’         printed output is *only* the cointegration table.
 #’ @export
-boundstest <- function(data,
+boundstest2 <- function(data,
                        formula,
                        case    = 3,
                        max.p   = 5,
