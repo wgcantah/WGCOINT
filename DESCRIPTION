@@ -1,0 +1,33 @@
+Package: WGCOINT
+Type: Package
+Title: WGCOINT: A Suite of Cointegration Tests for Time Series
+Version: 0.1.0
+Authors@R:
+    person("William", "Godfred Cantah", email = "wgcantah@example.com", role = c("aut", "cre"))
+Description: |
+    Implements multiple econometric cointegration tests:
+    - Engle–Granger Two-step (egct)
+    - Phillips–Ouliaris (poct)
+    - Johansen (jct)
+    - ARDL Bounds (Pesaran–Shin–Smith) (boundstest)
+    - Gregory–Hansen structural-break (ghct)
+    - Bayer–Hanck composite Fisher’s method (bhct)
+    All functions allow multiple regressors and automatic lag selection where appropriate.
+License: MIT + file LICENSE
+URL: https://CRAN.R-project.org/package=WGCOINT, https://github.com/wgcantah/WGCOINT
+BugReports: https://github.com/wgcantah/WGCOINT/issues
+Encoding: UTF-8
+LazyData: true
+Depends: R (>= 3.5)
+Imports:
+    stats,
+    tseries,
+    urca,
+    dLagM,
+    breaktest
+Suggests:
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
+Remotes:
+    d9d6ka/RANEPA-R

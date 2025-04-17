@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<meta name="author" content="William Godfred Cantah" />
+
+<meta name="date" content="2025-04-17" />
+
+<title>WGCOINT: Cointegration Tests for Time Series</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">WGCOINT: Cointegration Tests for Time
+Series</h1>
+<h4 class="author">William Godfred Cantah</h4>
+<h4 class="date">2025-04-17</h4>
+
+
+<div id="TOC">
+<ul>
+<li><a href="#englegranger-twostep-egct" id="toc-englegranger-twostep-egct">1. Engle–Granger Two‑Step
+(<code>egct</code>)</a></li>
+<li><a href="#phillipsouliaris-multivariate-poct" id="toc-phillipsouliaris-multivariate-poct">2. Phillips–Ouliaris
+Multivariate (<code>poct</code>)</a></li>
+<li><a href="#johansen-test-jct" id="toc-johansen-test-jct">3. Johansen
+Test (<code>jct</code>)</a></li>
+<li><a href="#ardl-bounds-test-boundstest" id="toc-ardl-bounds-test-boundstest">4. ARDL Bounds Test
+(<code>boundstest</code>)</a></li>
+<li><a href="#gregoryhansen-structuralbreak-ghct" id="toc-gregoryhansen-structuralbreak-ghct">5. Gregory–Hansen
+Structural‑Break (<code>ghct</code>)</a></li>
+<li><a href="#bayerhanck-composite-bhct" id="toc-bayerhanck-composite-bhct">6. Bayer–Hanck Composite
+(<code>bhct</code>)</a></li>
+<li><a href="#references" id="toc-references">References</a></li>
+</ul>
+</div>
+
+<pre><code>
+# Introduction
+
+The **WGCOINT** package provides a unified interface to six widely-used cointegration tests. Each test is tailored for different econometric contexts:
+
+1. **Engle–Granger Two-step** (`egct`)
+2. **Phillips–Ouliaris** (`poct`)
+3. **Johansen** (`jct`)
+4. **ARDL Bounds (Pesaran–Shin–Smith)** (`boundstest`)
+5. **Gregory–Hansen structural-break** (`ghct`)
+6. **Bayer–Hanck composite Fisher’s method** (`bhct`)
+
+These tests allow you to detect long-run relationships among non-stationary series, with support for multiple regressors.
+
+$1
+## Software Credits
+
+The **WGCOINT** package leverages functionality from several well-maintained R packages:
+
+- **tseries** (Trapletti &amp; Hornik, 2018), for the Augmented Dickey–Fuller test ([cran.nexr.com](https://cran.nexr.com/web/packages/tseries/citation.html?utm_source=chatgpt.com)).
+- **urca** (Pfaff, Zivot &amp; Stigler, 2016), for Johansen and Phillips–Ouliaris tests ([github.com](https://github.com/bpfaff/urca/blob/master/DESCRIPTION?utm_source=chatgpt.com)).
+- **dLagM** (Demirhan, 2020), for ARDL bounds testing ([cran.r-project.org](https://cran.r-project.org/web/packages/dLagM/dLagM.pdf?utm_source=chatgpt.com)).
+- **breaktest** (GitHub: d9d6ka/RANEPA-R), for the Gregory–Hansen structural-break test.
+
+Please consult the corresponding package documentation and references for detailed methodology.
+
+# Usage Overview
+
+Load the package:
+
+```r
+library(WGCOINT)</code></pre>
+<p>Each function follows the pattern:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>result <span class="ot">&lt;-</span> <span class="fu">egct</span>(data, <span class="at">y_var =</span> <span class="st">&quot;Y&quot;</span>, <span class="at">x_var =</span> <span class="st">&quot;X&quot;</span>, <span class="at">lags =</span> <span class="dv">1</span>, <span class="at">alpha =</span> <span class="fl">0.05</span>)</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>result <span class="ot">&lt;-</span> <span class="fu">poct</span>(data, <span class="at">vars =</span> <span class="fu">c</span>(<span class="st">&quot;Y&quot;</span>,<span class="st">&quot;X1&quot;</span>,<span class="st">&quot;X2&quot;</span>), <span class="at">alpha =</span> <span class="fl">0.05</span>)</span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>result <span class="ot">&lt;-</span> <span class="fu">jct</span>(data, <span class="at">vars =</span> <span class="fu">c</span>(<span class="st">&quot;Y&quot;</span>,<span class="st">&quot;X1&quot;</span>), <span class="at">K =</span> <span class="dv">2</span>)</span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a>result <span class="ot">&lt;-</span> <span class="fu">boundstest</span>(data, Y <span class="sc">~</span> X1 <span class="sc">+</span> X2, <span class="at">ic =</span> <span class="st">&quot;AIC&quot;</span>)</span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a>result <span class="ot">&lt;-</span> <span class="fu">ghct</span>(data, <span class="at">y =</span> <span class="st">&quot;Y&quot;</span>, <span class="at">x =</span> <span class="fu">c</span>(<span class="st">&quot;X1&quot;</span>,<span class="st">&quot;X2&quot;</span>))</span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a>result <span class="ot">&lt;-</span> <span class="fu">bhct</span>(data, <span class="at">vars =</span> <span class="fu">c</span>(<span class="st">&quot;Y&quot;</span>,<span class="st">&quot;X1&quot;</span>,<span class="st">&quot;X2&quot;</span>))</span></code></pre></div>
+<hr />
+<div id="englegranger-twostep-egct" class="section level2">
+<h2>1. Engle–Granger Two‑Step (<code>egct</code>)</h2>
+<p><strong>Model</strong>:</p>
+<p><span class="math display">\[
+\begin{aligned}
+Y_t &amp;= \alpha + \beta X_t + u_t \\
+\Delta u_t &amp;= \sum_{i=1}^p \gamma_i \Delta u_{t-i} + \varepsilon_t
+\end{aligned}
+\]</span></p>
+<ul>
+<li><strong>Step 1</strong>: OLS regression <span class="math inline">\(Y_t\sim X_t\)</span>, extract <span class="math inline">\(u_t\)</span>.</li>
+<li><strong>Step 2</strong>: ADF test on \(u_t) for stationarity.</li>
+</ul>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="co"># Example</span></span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="fu">data</span>(ww1); df <span class="ot">&lt;-</span> ww1 <span class="co"># your two-series data</span></span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>res_eg <span class="ot">&lt;-</span> <span class="fu">egct</span>(df, <span class="at">y_var =</span> <span class="st">&quot;y&quot;</span>, <span class="at">x_var =</span> <span class="st">&quot;x&quot;</span>, <span class="at">lags =</span> <span class="dv">2</span>)</span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a><span class="fu">print</span>(res_eg)</span></code></pre></div>
+<hr />
+</div>
+<div id="phillipsouliaris-multivariate-poct" class="section level2">
+<h2>2. Phillips–Ouliaris Multivariate (<code>poct</code>)</h2>
+<p><strong>Statistic</strong>:</p>
+<p><span class="math display">\[P_z = -n^2 - \sum_{t=1}^n \hat{u}_t&#39;
+\Lambda \hat{u}_t\]</span></p>
+<p>Based on the residual vector from the cointegrating regression, using
+<code>urca::ca.po()</code>. Select critical value by
+<code>alpha</code>.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>res_po <span class="ot">&lt;-</span> <span class="fu">poct</span>(df, <span class="at">vars =</span> <span class="fu">c</span>(<span class="st">&quot;y&quot;</span>,<span class="st">&quot;x1&quot;</span>,<span class="st">&quot;x2&quot;</span>), <span class="at">demean =</span> <span class="st">&quot;constant&quot;</span>)</span></code></pre></div>
+<hr />
+</div>
+<div id="johansen-test-jct" class="section level2">
+<h2>3. Johansen Test (<code>jct</code>)</h2>
+<p><strong>VECM form</strong>:</p>
+<p><span class="math display">\[\Delta Z_t = \Pi Z_{t-1} +
+\sum_{i=1}^{k-1} \Gamma_i \Delta Z_{t-i} + \varepsilon_t\]</span></p>
+<ul>
+<li>Trace &amp; eigenvalue tests on rank(<span class="math inline">\(\Pi\)</span>).</li>
+</ul>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>res_j <span class="ot">&lt;-</span> <span class="fu">jct</span>(df, <span class="at">vars =</span> <span class="fu">c</span>(<span class="st">&quot;y&quot;</span>,<span class="st">&quot;x1&quot;</span>,<span class="st">&quot;x2&quot;</span>), <span class="at">K =</span> <span class="dv">2</span>)</span></code></pre></div>
+<hr />
+</div>
+<div id="ardl-bounds-test-boundstest" class="section level2">
+<h2>4. ARDL Bounds Test (<code>boundstest</code>)</h2>
+<p><strong>ARDL(p,q)</strong>:</p>
+<p><span class="math display">\[Y_t = \sum_{i=1}^p \phi_i Y_{t-i} +
+\sum_{j=0}^q \theta_j X_{t-j} + \varepsilon_t\]</span></p>
+<p>Pesaran–Shin–Smith F-test on joint significance of lagged levels.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>res_bd <span class="ot">&lt;-</span> <span class="fu">boundstest</span>(df, y <span class="sc">~</span> x1 <span class="sc">+</span> x2, <span class="at">ic =</span> <span class="st">&quot;BIC&quot;</span>)</span></code></pre></div>
+<hr />
+</div>
+<div id="gregoryhansen-structuralbreak-ghct" class="section level2">
+<h2>5. Gregory–Hansen Structural‑Break (<code>ghct</code>)</h2>
+<p>Allow one unknown break at time <span class="math inline">\(T_b\)</span>:</p>
+<p><span class="math display">\[Y_t = \mu_1 + \mu_2 D_t + \beta X_t +
+u_t\]</span></p>
+<p>where <span class="math inline">\(D_t=I(t&gt;T_b)\)</span>. Tests:
+Za, Zt, ADF.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>res_gh <span class="ot">&lt;-</span> <span class="fu">ghct</span>(df, <span class="at">y =</span> <span class="st">&quot;y&quot;</span>, <span class="at">x =</span> <span class="fu">c</span>(<span class="st">&quot;x1&quot;</span>,<span class="st">&quot;x2&quot;</span>), <span class="at">shift =</span> <span class="st">&quot;level-trend&quot;</span>)</span></code></pre></div>
+<hr />
+</div>
+<div id="bayerhanck-composite-bhct" class="section level2">
+<h2>6. Bayer–Hanck Composite (<code>bhct</code>)</h2>
+<p>Combine p‑values <span class="math inline">\(p_i\)</span> via
+Fisher’s method:</p>
+<p><span class="math display">\[
+\chi^2 = -2 \sum_{i} \ln(p_i), \quad df = 2k
+\]</span></p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>res_bh <span class="ot">&lt;-</span> <span class="fu">bhct</span>(df, <span class="at">vars =</span> <span class="fu">c</span>(<span class="st">&quot;y&quot;</span>,<span class="st">&quot;x1&quot;</span>,<span class="st">&quot;x2&quot;</span>,<span class="st">&quot;x3&quot;</span>))</span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a><span class="fu">print</span>(res_bh)</span></code></pre></div>
+<hr />
+</div>
+<div id="references" class="section level1">
+<h1>References</h1>
+<ul>
+<li>Engle, R.F. &amp; Granger, C.W.J. (1987). Cointegration and error
+correction.</li>
+<li>Phillips, P.C.B. &amp; Ouliaris, S. (1990). Asymptotic properties of
+residual based tests for cointegration.</li>
+<li>Johansen, S. (1988). Statistical analysis of cointegration
+vectors.</li>
+<li>Pesaran, M.H., Shin, Y. &amp; Smith, R.J. (2001). Bounds testing
+approaches to the analysis of level relationships.</li>
+<li>Gregory, A.W. &amp; Hansen, B.E. (1996). Residual-based tests for
+cointegration in models with regime shifts.</li>
+<li>Bayer, C. &amp; Hanck, C. (2013). Combining non‐causality tests in
+cointegration analysis. ```</li>
+</ul>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

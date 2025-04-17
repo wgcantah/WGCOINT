@@ -1,0 +1,166 @@
+
+---
+title: "WGCOINT: Cointegration Tests for Time Series"
+author: "William Godfred Cantah"
+date: "`r Sys.Date()`"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+vignette: |
+  %\VignetteIndexEntry{WGCOINT: Cointegration Tests for Time Series}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+```
+
+# Introduction
+
+The **WGCOINT** package provides a unified interface to six widely-used cointegration tests. Each test is tailored for different econometric contexts:
+
+1. **Engle–Granger Two-step** (`egct`)
+2. **Phillips–Ouliaris** (`poct`)
+3. **Johansen** (`jct`)
+4. **ARDL Bounds (Pesaran–Shin–Smith)** (`boundstest`)
+5. **Gregory–Hansen structural-break** (`ghct`)
+6. **Bayer–Hanck composite Fisher’s method** (`bhct`)
+
+These tests allow you to detect long-run relationships among non-stationary series, with support for multiple regressors.
+
+$1
+## Software Credits
+
+The **WGCOINT** package leverages functionality from several well-maintained R packages:
+
+- **tseries** (Trapletti & Hornik, 2018), for the Augmented Dickey–Fuller test ([cran.nexr.com](https://cran.nexr.com/web/packages/tseries/citation.html?utm_source=chatgpt.com)).
+- **urca** (Pfaff, Zivot & Stigler, 2016), for Johansen and Phillips–Ouliaris tests ([github.com](https://github.com/bpfaff/urca/blob/master/DESCRIPTION?utm_source=chatgpt.com)).
+- **dLagM** (Demirhan, 2020), for ARDL bounds testing ([cran.r-project.org](https://cran.r-project.org/web/packages/dLagM/dLagM.pdf?utm_source=chatgpt.com)).
+- **breaktest** (GitHub: d9d6ka/RANEPA-R), for the Gregory–Hansen structural-break test.
+
+Please consult the corresponding package documentation and references for detailed methodology.
+
+# Usage Overview
+
+Load the package:
+
+```r
+library(WGCOINT)
+```
+
+Each function follows the pattern:
+
+```r
+result <- egct(data, y_var = "Y", x_var = "X", lags = 1, alpha = 0.05)
+result <- poct(data, vars = c("Y","X1","X2"), alpha = 0.05)
+result <- jct(data, vars = c("Y","X1"), K = 2)
+result <- boundstest(data, Y ~ X1 + X2, ic = "AIC")
+result <- ghct(data, y = "Y", x = c("X1","X2"))
+result <- bhct(data, vars = c("Y","X1","X2"))
+```
+
+---
+
+## 1. Engle–Granger Two‑Step (`egct`)
+
+**Model**:
+
+$$
+\begin{aligned}
+Y_t &= \alpha + \beta X_t + u_t \\
+\Delta u_t &= \sum_{i=1}^p \gamma_i \Delta u_{t-i} + \varepsilon_t
+\end{aligned}
+$$
+
+- **Step 1**: OLS regression \(Y_t\sim X_t\), extract \(u_t\).
+- **Step 2**: ADF test on \\(u_t\) for stationarity.
+
+```r
+# Example
+data(ww1); df <- ww1 # your two-series data
+res_eg <- egct(df, y_var = "y", x_var = "x", lags = 2)
+print(res_eg)
+```
+
+---
+
+## 2. Phillips–Ouliaris Multivariate (`poct`)
+
+**Statistic**:
+
+$$P_z = -n^2 - \sum_{t=1}^n \hat{u}_t' \Lambda \hat{u}_t$$
+
+Based on the residual vector from the cointegrating regression, using
+```urca::ca.po()```.  Select critical value by `alpha`.
+
+```r
+res_po <- poct(df, vars = c("y","x1","x2"), demean = "constant")
+```
+
+---
+
+## 3. Johansen Test (`jct`)
+
+**VECM form**:
+
+$$\Delta Z_t = \Pi Z_{t-1} + \sum_{i=1}^{k-1} \Gamma_i \Delta Z_{t-i} + \varepsilon_t$$
+
+- Trace & eigenvalue tests on rank(\(\Pi\)).
+
+```r
+res_j <- jct(df, vars = c("y","x1","x2"), K = 2)
+```
+
+---
+
+## 4. ARDL Bounds Test (`boundstest`)
+
+**ARDL(p,q)**:
+
+$$Y_t = \sum_{i=1}^p \phi_i Y_{t-i} + \sum_{j=0}^q \theta_j X_{t-j} + \varepsilon_t$$
+
+Pesaran–Shin–Smith F-test on joint significance of lagged levels.
+
+```r
+res_bd <- boundstest(df, y ~ x1 + x2, ic = "BIC")
+```
+
+---
+
+## 5. Gregory–Hansen Structural‑Break (`ghct`)
+
+Allow one unknown break at time \(T_b\):
+
+$$Y_t = \mu_1 + \mu_2 D_t + \beta X_t + u_t$$
+
+where \(D_t=I(t>T_b)\).  Tests: Za, Zt, ADF.
+
+```r
+res_gh <- ghct(df, y = "y", x = c("x1","x2"), shift = "level-trend")
+```
+
+---
+
+## 6. Bayer–Hanck Composite (`bhct`)
+
+Combine p‑values \(p_i\) via Fisher’s method:
+
+$$
+\chi^2 = -2 \sum_{i} \ln(p_i), \quad df = 2k
+$$
+
+```r
+res_bh <- bhct(df, vars = c("y","x1","x2","x3"))
+print(res_bh)
+```
+
+---
+
+# References
+
+- Engle, R.F. & Granger, C.W.J. (1987). Cointegration and error correction.
+- Phillips, P.C.B. & Ouliaris, S. (1990). Asymptotic properties of residual based tests for cointegration.
+- Johansen, S. (1988). Statistical analysis of cointegration vectors.
+- Pesaran, M.H., Shin, Y. & Smith, R.J. (2001). Bounds testing approaches to the analysis of level relationships.
+- Gregory, A.W. & Hansen, B.E. (1996). Residual-based tests for cointegration in models with regime shifts.
+- Bayer, C. & Hanck, C. (2013). Combining non‐causality tests in cointegration analysis.
+```
+
